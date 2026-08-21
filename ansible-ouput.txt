@@ -1,0 +1,227 @@
+(ansible) celse@DESKTOP-DC4SJL1:~/jenkins-cicd-lab/ansible$ ansible-playbook site.yml
+[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
+[DEPRECATION WARNING]: The 'tags' host variable is deprecated. Use 'ec2_tags' instead. This feature will be removed from collection 'amazon.aws' in a release after 2026-12-01.
+
+PLAY [Baseline every managed host] **************************************************************************************************
+[WARNING]: Found variable using reserved name 'tags'.
+Origin: <unknown>
+
+tags
+
+
+TASK [Gathering Facts] **************************************************************************************************************
+Friday 21 August 2026  11:45:42 +0200 (0:00:00.039)       0:00:00.039 ********* 
+ok: [cicd-app-server]
+ok: [cicd-jenkins-server]
+
+TASK [common : Update all packages] *************************************************************************************************
+Friday 21 August 2026  11:45:49 +0200 (0:00:07.589)       0:00:07.629 ********* 
+ok: [cicd-app-server]
+ok: [cicd-jenkins-server]
+
+TASK [common : Install baseline packages] *******************************************************************************************
+Friday 21 August 2026  11:45:53 +0200 (0:00:04.065)       0:00:11.694 ********* 
+ok: [cicd-app-server]
+ok: [cicd-jenkins-server]
+
+TASK [common : Install Docker engine] ***********************************************************************************************
+Friday 21 August 2026  11:45:57 +0200 (0:00:03.786)       0:00:15.481 ********* 
+ok: [cicd-app-server]
+ok: [cicd-jenkins-server]
+
+TASK [common : Enable and start Docker] *********************************************************************************************
+Friday 21 August 2026  11:46:02 +0200 (0:00:04.477)       0:00:19.958 ********* 
+ok: [cicd-app-server]
+ok: [cicd-jenkins-server]
+
+TASK [common : Ensure the Docker CLI plugin directory exists] ***********************************************************************
+Friday 21 August 2026  11:46:05 +0200 (0:00:02.984)       0:00:22.943 ********* 
+ok: [cicd-app-server]
+ok: [cicd-jenkins-server]
+
+TASK [common : Install the Docker Compose v2 plugin] ********************************************************************************
+Friday 21 August 2026  11:46:06 +0200 (0:00:01.623)       0:00:24.566 ********* 
+ok: [cicd-app-server]
+ok: [cicd-jenkins-server]
+
+TASK [common : Verify Compose is callable as a docker subcommand] *******************************************************************
+Friday 21 August 2026  11:46:09 +0200 (0:00:02.584)       0:00:27.151 ********* 
+ok: [cicd-jenkins-server]
+ok: [cicd-app-server]
+
+TASK [common : Report the Compose version] ******************************************************************************************
+Friday 21 August 2026  11:46:10 +0200 (0:00:01.741)       0:00:28.892 ********* 
+ok: [cicd-app-server] => 
+    msg: Docker Compose version v2.32.4
+ok: [cicd-jenkins-server] => 
+    msg: Docker Compose version v2.32.4
+
+TASK [common : Add users to the docker group] ***************************************************************************************
+Friday 21 August 2026  11:46:11 +0200 (0:00:00.055)       0:00:28.947 ********* 
+ok: [cicd-jenkins-server] => (item=ec2-user)
+ok: [cicd-app-server] => (item=ec2-user)
+
+TASK [common : Install boto3 for AWS-aware modules] *********************************************************************************
+Friday 21 August 2026  11:46:12 +0200 (0:00:01.561)       0:00:30.509 ********* 
+ok: [cicd-app-server]
+ok: [cicd-jenkins-server]
+
+PLAY [Configure the Jenkins controller] *********************************************************************************************
+
+TASK [Gathering Facts] **************************************************************************************************************
+Friday 21 August 2026  11:46:15 +0200 (0:00:02.437)       0:00:32.947 ********* 
+ok: [cicd-jenkins-server]
+
+TASK [jenkins : Install Java for Jenkins] *******************************************************************************************
+Friday 21 August 2026  11:46:18 +0200 (0:00:03.195)       0:00:36.143 ********* 
+ok: [cicd-jenkins-server]
+
+TASK [jenkins : Add the Jenkins stable repository] **********************************************************************************
+Friday 21 August 2026  11:46:21 +0200 (0:00:03.680)       0:00:39.824 ********* 
+ok: [cicd-jenkins-server]
+
+TASK [jenkins : Import the Jenkins signing key] *************************************************************************************
+Friday 21 August 2026  11:46:24 +0200 (0:00:02.151)       0:00:41.975 ********* 
+ok: [cicd-jenkins-server]
+
+TASK [jenkins : Install the latest Jenkins LTS] *************************************************************************************
+Friday 21 August 2026  11:46:25 +0200 (0:00:01.845)       0:00:43.820 ********* 
+ok: [cicd-jenkins-server]
+
+TASK [jenkins : Enable and start Jenkins] *******************************************************************************************
+Friday 21 August 2026  11:46:28 +0200 (0:00:03.072)       0:00:46.893 ********* 
+ok: [cicd-jenkins-server]
+
+TASK [jenkins : Add the jenkins user to the docker group] ***************************************************************************
+Friday 21 August 2026  11:46:32 +0200 (0:00:03.314)       0:00:50.208 ********* 
+ok: [cicd-jenkins-server]
+
+TASK [jenkins : Ensure the jenkins user has an SSH directory] ***********************************************************************
+Friday 21 August 2026  11:46:33 +0200 (0:00:01.505)       0:00:51.714 ********* 
+ok: [cicd-jenkins-server]
+
+TASK [jenkins : Scan the app server's host key from the Jenkins host] ***************************************************************
+Friday 21 August 2026  11:46:35 +0200 (0:00:01.382)       0:00:53.096 ********* 
+ok: [cicd-jenkins-server] => (item=cicd-app-server)
+
+TASK [jenkins : Add the app server to the jenkins user's known_hosts] ***************************************************************
+Friday 21 August 2026  11:46:36 +0200 (0:00:01.273)       0:00:54.370 ********* 
+[WARNING]: Module remote_tmp /var/lib/jenkins/.ansible/tmp did not exist and was created with a mode of 0700, this may cause issues when running as another user. To avoid this, create the remote_tmp dir with the correct permissions manually
+changed: [cicd-jenkins-server] => (item=10.20.1.14)
+
+TASK [jenkins : Wait for Jenkins to answer on 8080] *********************************************************************************
+Friday 21 August 2026  11:46:38 +0200 (0:00:01.568)       0:00:55.938 ********* 
+ok: [cicd-jenkins-server]
+
+TASK [jenkins : Read the initial admin password] ************************************************************************************
+Friday 21 August 2026  11:46:42 +0200 (0:00:04.574)       0:01:00.513 ********* 
+ok: [cicd-jenkins-server]
+
+TASK [jenkins : Show the initial admin password] ************************************************************************************
+Friday 21 August 2026  11:46:44 +0200 (0:00:02.074)       0:01:02.588 ********* 
+ok: [cicd-jenkins-server] => 
+    msg: 'Jenkins unlock password: 50299e052579415f84c2fcde31b03fb1'
+
+TASK [jenkins : Record installed versions for the tools-evidence screenshot] ********************************************************
+Friday 21 August 2026  11:46:44 +0200 (0:00:00.057)       0:01:02.645 ********* 
+ok: [cicd-jenkins-server]
+
+TASK [jenkins : Print tool versions] ************************************************************************************************
+Friday 21 August 2026  11:46:45 +0200 (0:00:01.210)       0:01:03.855 ********* 
+ok: [cicd-jenkins-server] => 
+    msg:
+    - '--- jenkins ---'
+    - jenkins-2.568.2-1.noarch
+    - '--- java ---'
+    - openjdk version "21.0.12" 2026-07-21 LTS
+    - '--- docker ---'
+    - Docker version 25.0.14, build 0bab007
+    - '--- compose ---'
+    - Docker Compose version v2.32.4
+    - '--- os ---'
+    - NAME="Amazon Linux"
+    - VERSION="2023"
+
+PLAY [Configure the deployment target] **********************************************************************************************
+
+TASK [Gathering Facts] **************************************************************************************************************
+Friday 21 August 2026  11:46:46 +0200 (0:00:00.042)       0:01:03.898 ********* 
+ok: [cicd-app-server]
+
+TASK [appserver : Create the application directory] *********************************************************************************
+Friday 21 August 2026  11:46:48 +0200 (0:00:02.453)       0:01:06.352 ********* 
+changed: [cicd-app-server]
+
+TASK [appserver : Create the nginx config directory] ********************************************************************************
+Friday 21 August 2026  11:46:49 +0200 (0:00:01.223)       0:01:07.575 ********* 
+changed: [cicd-app-server]
+
+TASK [appserver : Template the compose file] ****************************************************************************************
+Friday 21 August 2026  11:46:50 +0200 (0:00:01.077)       0:01:08.653 ********* 
+changed: [cicd-app-server]
+
+TASK [appserver : Ship the nginx configuration] *************************************************************************************
+Friday 21 August 2026  11:46:57 +0200 (0:00:06.606)       0:01:15.259 ********* 
+changed: [cicd-app-server]
+
+TASK [appserver : Seed the environment file if absent] ******************************************************************************
+Friday 21 August 2026  11:47:03 +0200 (0:00:06.439)       0:01:21.698 ********* 
+changed: [cicd-app-server]
+
+TASK [appserver : Install a container-pruning job to stop the disk filling up] ******************************************************
+Friday 21 August 2026  11:47:10 +0200 (0:00:06.252)       0:01:27.951 ********* 
+changed: [cicd-app-server]
+
+TASK [appserver : Record installed versions for the tools-evidence screenshot] ******************************************************
+Friday 21 August 2026  11:47:16 +0200 (0:00:06.761)       0:01:34.713 ********* 
+ok: [cicd-app-server]
+
+TASK [appserver : Print tool versions] **********************************************************************************************
+Friday 21 August 2026  11:47:17 +0200 (0:00:01.024)       0:01:35.737 ********* 
+ok: [cicd-app-server] => 
+    msg:
+    - '--- docker ---'
+    - Docker version 25.0.14, build 0bab007
+    - '--- compose ---'
+    - Docker Compose version v2.32.4
+    - '--- os ---'
+    - NAME="Amazon Linux"
+    - VERSION="2023"
+
+RUNNING HANDLER [appserver : Reload nginx] ******************************************************************************************
+Friday 21 August 2026  11:47:17 +0200 (0:00:00.036)       0:01:35.774 ********* 
+changed: [cicd-app-server]
+
+RUNNING HANDLER [appserver : Recreate the stack] ************************************************************************************
+Friday 21 August 2026  11:47:19 +0200 (0:00:01.194)       0:01:36.968 ********* 
+changed: [cicd-app-server]
+
+PLAY RECAP **************************************************************************************************************************
+cicd-app-server            : ok=22   changed=8    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+cicd-jenkins-server        : ok=26   changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+
+TASKS RECAP *************************************************************************************************************************
+Friday 21 August 2026  11:48:55 +0200 (0:01:36.516)       0:03:13.484 ********* 
+=============================================================================== 
+appserver : Recreate the stack ---------------------------------------------------------------------------------------------- 96.52s
+Gathering Facts -------------------------------------------------------------------------------------------------------------- 7.59s
+appserver : Install a container-pruning job to stop the disk filling up ------------------------------------------------------ 6.76s
+appserver : Template the compose file ---------------------------------------------------------------------------------------- 6.61s
+appserver : Ship the nginx configuration ------------------------------------------------------------------------------------- 6.44s
+appserver : Seed the environment file if absent ------------------------------------------------------------------------------ 6.25s
+jenkins : Wait for Jenkins to answer on 8080 --------------------------------------------------------------------------------- 4.57s
+common : Install Docker engine ----------------------------------------------------------------------------------------------- 4.48s
+common : Update all packages ------------------------------------------------------------------------------------------------- 4.07s
+common : Install baseline packages ------------------------------------------------------------------------------------------- 3.79s
+jenkins : Install Java for Jenkins ------------------------------------------------------------------------------------------- 3.68s
+jenkins : Enable and start Jenkins ------------------------------------------------------------------------------------------- 3.31s
+Gathering Facts -------------------------------------------------------------------------------------------------------------- 3.20s
+jenkins : Install the latest Jenkins LTS ------------------------------------------------------------------------------------- 3.07s
+common : Enable and start Docker --------------------------------------------------------------------------------------------- 2.99s
+common : Install the Docker Compose v2 plugin -------------------------------------------------------------------------------- 2.59s
+Gathering Facts -------------------------------------------------------------------------------------------------------------- 2.45s
+common : Install boto3 for AWS-aware modules --------------------------------------------------------------------------------- 2.44s
+jenkins : Add the Jenkins stable repository ---------------------------------------------------------------------------------- 2.15s
+jenkins : Read the initial admin password ------------------------------------------------------------------------------------ 2.07s
+(ansible) celse@DESKTOP-DC4SJL1:~/jenkins-cicd-lab/ansible$ 
