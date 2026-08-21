@@ -39,33 +39,25 @@ variable "availability_zone" {
 # --- compute ---------------------------------------------------------------
 
 variable "jenkins_instance_type" {
-  description = "Instance type for the Jenkins controller. 4 GB RAM is the practical floor once Docker builds run here."
-  type        = string
-  default     = "t3.medium"
+  default = "t3.small"
 }
 
 variable "app_instance_type" {
-  description = "Instance type for the deployment target"
-  type        = string
-  default     = "t3.small"
+  default = "t3.micro"
 }
 
 variable "jenkins_root_volume_size" {
-  description = "Root volume size in GB for the Jenkins controller. Docker images accumulate fast."
-  type        = number
-  default     = 30
+  default = 20
 }
 
 variable "app_root_volume_size" {
-  description = "Root volume size in GB for the app server"
-  type        = number
-  default     = 20
+  default = 10
 }
 
 variable "ami_name_filter" {
-  description = "AMI name pattern. Amazon Linux 2023."
+  description = "AMI name pattern. Standard Amazon Linux 2023 — the 2023.* prefix with an explicit kernel excludes the ecs / minimal / neuron variants, which carry larger snapshots and software we don't want."
   type        = string
-  default     = "al2023-ami-*-x86_64"
+  default     = "al2023-ami-2023.*-kernel-6.1-x86_64"
 }
 
 # --- access ----------------------------------------------------------------
