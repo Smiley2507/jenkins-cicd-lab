@@ -1,0 +1,19 @@
+---
+- name: Baseline every managed host
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - common
+
+- name: Configure the Jenkins controller
+  hosts: role_jenkins
+  become: true
+  roles:
+    - jenkins
+
+- name: Configure the deployment target
+  hosts: role_app
+  become: true
+  roles:
+    - appserver

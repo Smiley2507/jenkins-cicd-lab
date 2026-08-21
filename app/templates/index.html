@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Weather Now</title>
+  <style>
+    :root {
+      --bg: #0f172a; --card: #1e293b; --line: #334155;
+      --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center;
+      justify-content: center; padding: 24px;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg); color: var(--text);
+    }
+    .card {
+      width: 100%; max-width: 460px; background: var(--card);
+      border: 1px solid var(--line); border-radius: 14px; padding: 28px;
+    }
+    h1 { margin: 0 0 4px; font-size: 1.4rem; }
+    .sub { margin: 0 0 22px; color: var(--muted); font-size: 0.875rem; }
+    label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; }
+    select, button {
+      width: 100%; padding: 11px 12px; font-size: 0.95rem; border-radius: 8px;
+      border: 1px solid var(--line); background: #0b1220; color: var(--text);
+    }
+    button {
+      margin-top: 12px; background: var(--accent); color: #06202b;
+      font-weight: 600; border: none; cursor: pointer;
+    }
+    button:hover { filter: brightness(1.08); }
+    .error {
+      margin-top: 18px; padding: 12px; border-radius: 8px; font-size: 0.875rem;
+      background: #451a1a; border: 1px solid #7f1d1d; color: #fecaca;
+    }
+    .result { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 20px; }
+    .place { font-size: 1.05rem; font-weight: 600; }
+    .temp { font-size: 2.6rem; font-weight: 650; margin: 6px 0 2px; }
+    .cond { color: var(--muted); margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .tile { background: #0b1220; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+    .tile .k { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .tile .v { font-size: 1rem; margin-top: 3px; }
+    .s0 { color: var(--muted); } .s1 { color: #4ade80; } .s2 { color: #a3e635; }
+    .s3 { color: #facc15; } .s4 { color: #fb923c; } .s5 { color: #f87171; } .s6 { color: #e879f9; }
+    .stamp { margin-top: 14px; font-size: 0.75rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Weather Now</h1>
+    <p class="sub">Current conditions and air quality, via Open-Meteo.</p>
+
+    <form method="post" action="/">
+      <label for="city">City</label>
+      <select id="city" name="city">
+        {% for city in cities %}
+          <option value="{{ city.slug }}"
+            {% if result and result.city == city.name %}selected{% endif %}>
+            {{ city.name }}, {{ city.country }}
+          </option>
+        {% endfor %}
+      </select>
+      <button type="submit">Get weather</button>
+    </form>
+
+    {% if error %}
+      <div class="error">{{ error }}</div>
+    {% endif %}
+
+    {% if result %}
+      <section class="result">
+        <div class="place">{{ result.city }}, {{ result.country }}</div>
+        <div class="temp">{{ result.temperature }}&deg;C</div>
+        <div class="cond">{{ result.conditions }}</div>
+
+        <div class="grid">
+          <div class="tile">
+            <div class="k">Humidity</div>
+            <div class="v">{{ result.humidity }}%</div>
+          </div>
+          <div class="tile">
+            <div class="k">Wind</div>
+            <div class="v">{{ result.wind_speed }} km/h</div>
+          </div>
+          <div class="tile">
+            <div class="k">Air quality</div>
+            <div class="v s{{ result.aqi_band.severity }}">{{ result.aqi_band.label }}</div>
+          </div>
+          <div class="tile">
+            <div class="k">AQI</div>
+            <div class="v">{{ result.aqi if result.aqi is not none else '&mdash;' | safe }}</div>
+          </div>
+        </div>
+
+        <div class="stamp">Observed {{ result.observed_at }} local time.</div>
+      </section>
+    {% endif %}
+  </main>
+</body>
+</html>

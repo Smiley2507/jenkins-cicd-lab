@@ -1,0 +1,99 @@
+variable "region" {
+  description = "AWS region to deploy into"
+  type        = string
+  default     = "eu-west-1"
+}
+
+variable "aws_profile" {
+  description = "Named profile in ~/.aws/credentials used for this deployment"
+  type        = string
+  default     = "sandbox-user"
+}
+
+variable "project" {
+  description = "Prefix used for resource names"
+  type        = string
+  default     = "cicd"
+}
+
+# --- network ---------------------------------------------------------------
+
+variable "vpc_cidr" {
+  description = "CIDR block for the VPC"
+  type        = string
+  default     = "10.20.0.0/16"
+}
+
+variable "public_subnet_cidr" {
+  description = "CIDR block for the public subnet"
+  type        = string
+  default     = "10.20.1.0/24"
+}
+
+variable "availability_zone" {
+  description = "AZ for the public subnet"
+  type        = string
+  default     = "eu-west-1a"
+}
+
+# --- compute ---------------------------------------------------------------
+
+variable "jenkins_instance_type" {
+  description = "Instance type for the Jenkins controller. 4 GB RAM is the practical floor once Docker builds run here."
+  type        = string
+  default     = "t3.medium"
+}
+
+variable "app_instance_type" {
+  description = "Instance type for the deployment target"
+  type        = string
+  default     = "t3.small"
+}
+
+variable "jenkins_root_volume_size" {
+  description = "Root volume size in GB for the Jenkins controller. Docker images accumulate fast."
+  type        = number
+  default     = 30
+}
+
+variable "app_root_volume_size" {
+  description = "Root volume size in GB for the app server"
+  type        = number
+  default     = 20
+}
+
+variable "ami_name_filter" {
+  description = "AMI name pattern. Amazon Linux 2023."
+  type        = string
+  default     = "al2023-ami-*-x86_64"
+}
+
+# --- access ----------------------------------------------------------------
+
+variable "admin_cidr" {
+  description = "CIDR allowed to reach SSH and the Jenkins UI from outside the VPC"
+  type        = string
+  default     = "0.0.0.0/0"
+}
+
+variable "app_port" {
+  description = "Host port the application is published on"
+  type        = number
+  default     = 80
+}
+
+variable "private_key_path" {
+  description = "Local path where the generated private key is written. Consumed by Ansible and by the Jenkins ec2_ssh credential."
+  type        = string
+  default     = "./cicd-key.pem"
+}
+
+variable "tags" {
+  description = "Default tags applied to every resource"
+  type        = map(string)
+  default = {
+    Project     = "jenkins-cicd-lab"
+    Environment = "sandbox"
+    ManagedBy   = "terraform"
+  }
+}

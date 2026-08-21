@@ -1,0 +1,9 @@
+# The context is app/ only, so this list stays short by construction — the
+# rest of the repo is already out of scope.
+tests/
+requirements-dev.txt
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage

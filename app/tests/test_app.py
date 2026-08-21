@@ -1,0 +1,82 @@
+"""Route-level tests using the Flask test client."""
+
+import pytest
+
+import app as app_module
+import weather
+
+
+@pytest.fixture
+def client():
+    application = app_module.create_app()
+    application.config.update(TESTING=True)
+    with application.test_client() as test_client:
+        yield test_client
+
+
+SAMPLE_RESULT = {
+    "city": "Kigali",
+    "country": "Rwanda",
+    "temperature": 21.4,
+    "humidity": 68,
+    "wind_speed": 11.2,
+    "conditions": "Overcast",
+    "observed_at": "2026-08-20T09:00",
+    "aqi": 34,
+    "aqi_band": {"label": "Fair", "severity": 2},
+}
+
+
+def test_health_returns_ok(client):
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.get_json()["status"] == "ok"
+    assert "version" in response.get_json()
+
+
+def test_index_renders_the_city_form(client):
+    response = client.get("/")
+
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "Kigali" in body
+    assert "<form" in body
+
+
+def test_lookup_renders_weather_for_a_valid_city(client, monkeypatch):
+    monkeypatch.setattr(app_module, "fetch_weather", lambda slug: SAMPLE_RESULT)
+
+    response = client.post("/", data={"city": "kigali"})
+
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "21.4" in body
+    assert "Overcast" in body
+    assert "Fair" in body
+
+
+def test_lookup_rejects_unknown_city(client):
+    response = client.post("/", data={"city": "atlantis"})
+
+    assert response.status_code == 400
+    assert "not one of the supported cities" in response.get_data(as_text=True)
+
+
+def test_lookup_requires_a_city(client):
+    response = client.post("/", data={})
+
+    assert response.status_code == 400
+    assert "Please choose a city" in response.get_data(as_text=True)
+
+
+def test_lookup_returns_502_when_upstream_fails(client, monkeypatch):
+    def boom(slug):
+        raise weather.WeatherServiceError("Upstream weather service timed out")
+
+    monkeypatch.setattr(app_module, "fetch_weather", boom)
+
+    response = client.post("/", data={"city": "london"})
+
+    assert response.status_code == 502
+    assert "Could not retrieve weather" in response.get_data(as_text=True)

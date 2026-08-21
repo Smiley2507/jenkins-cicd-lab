@@ -1,0 +1,68 @@
+---
+- name: Update all packages
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+    update_cache: true
+  register: dnf_update
+  retries: 3
+  delay: 10
+  until: dnf_update is succeeded
+
+- name: Install baseline packages
+  ansible.builtin.dnf:
+    name: "{{ common_packages }}"
+    state: present
+
+- name: Install Docker engine
+  ansible.builtin.dnf:
+    name: docker
+    state: present
+
+- name: Enable and start Docker
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Ensure the Docker CLI plugin directory exists
+  ansible.builtin.file:
+    path: /usr/libexec/docker/cli-plugins
+    state: directory
+    mode: "0755"
+
+# Amazon Linux 2023 ships the Docker engine but not the Compose v2 plugin,
+# so it is fetched from the upstream release rather than from dnf.
+- name: Install the Docker Compose v2 plugin
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-linux-x86_64
+    dest: /usr/libexec/docker/cli-plugins/docker-compose
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Verify Compose is callable as a docker subcommand
+  ansible.builtin.command: docker compose version
+  register: compose_version
+  changed_when: false
+
+- name: Report the Compose version
+  ansible.builtin.debug:
+    msg: "{{ compose_version.stdout }}"
+
+- name: Add users to the docker group
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: docker
+    append: true
+  loop: "{{ docker_users }}"
+
+- name: Install boto3 for AWS-aware modules
+  ansible.builtin.pip:
+    name: boto3
+    state: present
+    extra_args: --user
+  become: false
+  changed_when: false
+  failed_when: false

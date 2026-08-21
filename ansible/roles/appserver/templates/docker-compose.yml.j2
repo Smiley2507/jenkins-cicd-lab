@@ -1,0 +1,44 @@
+---
+# {{ ansible_managed }} — do not edit on the host, edit the template and re-run.
+#
+# APP_IMAGE and APP_VERSION come from {{ app_dir }}/.env, which the Jenkins
+# deploy stage rewrites on every run. Nothing else here changes between deploys.
+
+services:
+  web:
+    image: ${APP_IMAGE}
+    container_name: {{ container_name }}
+    restart: unless-stopped
+    # Deliberately NOT published to the host. nginx is the only ingress.
+    expose:
+      - "{{ container_port }}"
+    environment:
+      APP_VERSION: ${APP_VERSION}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:{{ container_port }}/health').status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  nginx:
+    image: nginx:{{ nginx_version }}
+    container_name: {{ container_name }}-nginx
+    restart: unless-stopped
+    ports:
+      - "{{ app_port }}:80"
+    volumes:
+      - {{ app_dir }}/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      web:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

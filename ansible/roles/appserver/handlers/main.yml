@@ -1,0 +1,19 @@
+---
+# Both handlers no-op safely before the first deploy, when no stack is running.
+
+- name: Reload nginx
+  ansible.builtin.command:
+    cmd: docker exec {{ container_name }}-nginx nginx -s reload
+  become: true
+  become_user: ec2-user
+  failed_when: false
+  changed_when: true
+
+- name: Recreate the stack
+  ansible.builtin.command:
+    cmd: docker compose up -d --remove-orphans
+    chdir: "{{ app_dir }}"
+  become: true
+  become_user: ec2-user
+  failed_when: false
+  changed_when: true

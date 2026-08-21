@@ -1,0 +1,104 @@
+---
+# Follows the official Jenkins Linux (Fedora/RHEL) installation guide:
+# https://www.jenkins.io/doc/book/installing/linux/#fedora
+
+- name: Install Java for Jenkins
+  ansible.builtin.dnf:
+    name: "{{ java_package }}"
+    state: present
+
+- name: Add the Jenkins stable repository
+  ansible.builtin.get_url:
+    url: https://pkg.jenkins.io/redhat-stable/jenkins.repo
+    dest: /etc/yum.repos.d/jenkins.repo
+    mode: "0644"
+
+- name: Import the Jenkins signing key
+  ansible.builtin.rpm_key:
+    key: https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+    state: present
+
+- name: Install the latest Jenkins LTS
+  ansible.builtin.dnf:
+    name: jenkins
+    state: present
+    update_cache: true
+  notify: Restart Jenkins
+
+- name: Enable and start Jenkins
+  ansible.builtin.systemd:
+    name: jenkins
+    state: started
+    enabled: true
+    daemon_reload: true
+
+# Jenkins builds Docker images on this host, so the jenkins service account
+# needs the docker socket. Group membership only takes effect after the
+# service restarts — hence the handler.
+- name: Add the jenkins user to the docker group
+  ansible.builtin.user:
+    name: jenkins
+    groups: docker
+    append: true
+  notify: Restart Jenkins
+
+- name: Ensure the jenkins user has an SSH directory
+  ansible.builtin.file:
+    path: /var/lib/jenkins/.ssh
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0700"
+
+# Pre-trusting the app server means the deploy stage never hangs on an
+# interactive host-key prompt.
+- name: Pre-populate known_hosts with the app server
+  ansible.builtin.known_hosts:
+    path: /var/lib/jenkins/.ssh/known_hosts
+    name: "{{ hostvars[item].private_ip_address }}"
+    key: "{{ lookup('pipe', 'ssh-keyscan -t ed25519 ' ~ hostvars[item].private_ip_address) }}"
+    state: present
+  loop: "{{ groups['role_app'] | default([]) }}"
+  become: true
+  become_user: jenkins
+  failed_when: false
+
+- name: Wait for Jenkins to answer on 8080
+  ansible.builtin.uri:
+    url: http://localhost:8080/login
+    status_code: [200, 403]
+  register: jenkins_up
+  retries: 30
+  delay: 10
+  until: jenkins_up is succeeded
+
+- name: Read the initial admin password
+  ansible.builtin.slurp:
+    src: /var/lib/jenkins/secrets/initialAdminPassword
+  register: jenkins_admin_password
+  failed_when: false
+
+- name: Show the initial admin password
+  ansible.builtin.debug:
+    msg: >-
+      Jenkins unlock password:
+      {{ jenkins_admin_password.content | b64decode | trim
+         if jenkins_admin_password.content is defined
+         else 'already unlocked — file has been removed' }}
+
+- name: Record installed versions for the tools-evidence screenshot
+  ansible.builtin.shell: |
+    set -o pipefail
+    echo "--- jenkins ---"; rpm -q jenkins
+    echo "--- java ---";    java -version 2>&1 | head -1
+    echo "--- docker ---";  docker --version
+    echo "--- compose ---"; docker compose version
+    echo "--- os ---";      cat /etc/os-release | head -2
+  args:
+    executable: /bin/bash
+  register: tool_versions
+  changed_when: false
+
+- name: Print tool versions
+  ansible.builtin.debug:
+    msg: "{{ tool_versions.stdout_lines }}"

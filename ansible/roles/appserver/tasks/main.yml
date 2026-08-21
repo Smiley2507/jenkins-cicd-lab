@@ -1,0 +1,77 @@
+---
+- name: Create the application directory
+  ansible.builtin.file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: ec2-user
+    group: ec2-user
+    mode: "0755"
+
+- name: Create the nginx config directory
+  ansible.builtin.file:
+    path: "{{ app_dir }}/nginx"
+    state: directory
+    owner: ec2-user
+    group: ec2-user
+    mode: "0755"
+
+# Ansible owns the machine's runtime configuration. It does NOT ship the
+# Dockerfile or the application code — those live in app/ and are built into
+# an image by Jenkins. Keeping that boundary clean is the point of this role.
+- name: Template the compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ app_dir }}/docker-compose.yml"
+    owner: ec2-user
+    group: ec2-user
+    mode: "0644"
+  notify: Recreate the stack
+
+# nginx/default.conf at the repo root is the single source of truth, so the
+# same file serves local development and the app server.
+- name: Ship the nginx configuration
+  ansible.builtin.copy:
+    src: "{{ nginx_conf_src }}"
+    dest: "{{ app_dir }}/nginx/default.conf"
+    owner: ec2-user
+    group: ec2-user
+    mode: "0644"
+  notify: Reload nginx
+
+# Seeded once so `docker compose config` is valid before the first deploy.
+# Jenkins overwrites both values on every run.
+- name: Seed the environment file if absent
+  ansible.builtin.copy:
+    dest: "{{ app_dir }}/.env"
+    owner: ec2-user
+    group: ec2-user
+    mode: "0644"
+    force: false
+    content: |
+      APP_IMAGE=nginx:alpine
+      APP_VERSION=uninitialised
+
+- name: Install a container-pruning job to stop the disk filling up
+  ansible.builtin.copy:
+    dest: /etc/cron.daily/docker-prune
+    mode: "0755"
+    content: |
+      #!/bin/bash
+      # Reclaim dangling images and stopped containers older than 24h.
+      /usr/bin/docker container prune -f --filter "until=24h"
+      /usr/bin/docker image prune -af --filter "until=24h"
+
+- name: Record installed versions for the tools-evidence screenshot
+  ansible.builtin.shell: |
+    set -o pipefail
+    echo "--- docker ---";  docker --version
+    echo "--- compose ---"; docker compose version
+    echo "--- os ---";      cat /etc/os-release | head -2
+  args:
+    executable: /bin/bash
+  register: app_tool_versions
+  changed_when: false
+
+- name: Print tool versions
+  ansible.builtin.debug:
+    msg: "{{ app_tool_versions.stdout_lines }}"

@@ -1,0 +1,17 @@
+---
+# Pinned so a rebuild months from now installs what you tested against.
+docker_compose_version: "v2.32.4"
+nginx_version: "1.27-alpine"
+
+# Java for the Jenkins controller. Jenkins LTS requires 17 or 21.
+java_package: java-21-amazon-corretto
+
+# App server layout.
+app_dir: /opt/weather-app
+app_port: 80          # host port nginx publishes
+container_port: 8000  # gunicorn's port inside the app container
+container_name: weather-app
+
+# nginx/default.conf at the repo root is the single source of truth for both
+# local development and the app server.
+nginx_conf_src: "{{ playbook_dir }}/../nginx/default.conf"

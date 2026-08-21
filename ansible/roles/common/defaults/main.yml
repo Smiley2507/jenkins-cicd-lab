@@ -1,0 +1,12 @@
+---
+common_packages:
+  - git
+  - curl
+  - tar
+  - unzip
+  - jq
+  - python3-pip
+
+# Users added to the docker group. Roles append to this.
+docker_users:
+  - ec2-user

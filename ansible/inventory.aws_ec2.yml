@@ -1,0 +1,32 @@
+---
+# Dynamic inventory: queries EC2 directly, so there is no static hosts file to
+# keep in sync with Terraform. Hosts are grouped by the Role tag that
+# compute.tf sets.
+plugin: amazon.aws.aws_ec2
+
+regions:
+  - eu-west-1
+
+# Uses the same named profile as Terraform.
+profile: sandbox-user
+
+# Only running instances from this project, so an unrelated instance in the
+# account can never end up being configured by accident.
+filters:
+  instance-state-name: running
+  tag:Project: jenkins-cicd-lab
+
+# Connect over the public IP — we are running Ansible from a laptop outside
+# the VPC. Swap to private_ip_address if you ever run it from a bastion.
+hostnames:
+  - tag:Name
+
+compose:
+  ansible_host: public_ip_address
+
+keyed_groups:
+  # tag Role=jenkins  ->  group "role_jenkins"
+  # tag Role=app      ->  group "role_app"
+  - key: tags.Role
+    prefix: role
+    separator: "_"
