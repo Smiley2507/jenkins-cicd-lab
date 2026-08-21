@@ -25,6 +25,33 @@
     update_cache: true
   notify: Restart Jenkins
 
+# Amazon Linux 2023 mounts /tmp as a tmpfs at 50% of RAM. On a 2 GB instance
+# that is ~956 MiB, below Jenkins' hardcoded 1 GiB "Free Temp Space" threshold,
+# so Jenkins takes the built-in node offline and no build can ever schedule.
+# Point java.io.tmpdir at the root volume instead of raising RAM.
+- name: Create a Jenkins temp directory on the root volume
+  ansible.builtin.file:
+    path: /var/lib/jenkins/tmp
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0750"
+
+- name: Ensure the systemd override directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/jenkins.service.d
+    state: directory
+    mode: "0755"
+
+- name: Point Jenkins' temp directory at the root volume
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/jenkins.service.d/override.conf
+    mode: "0644"
+    content: |
+      [Service]
+      Environment="JAVA_OPTS=-Djava.io.tmpdir=/var/lib/jenkins/tmp -Djava.awt.headless=true"
+  notify: Restart Jenkins
+
 - name: Enable and start Jenkins
   ansible.builtin.systemd:
     name: jenkins
@@ -52,16 +79,30 @@
 
 # Pre-trusting the app server means the deploy stage never hangs on an
 # interactive host-key prompt.
-- name: Pre-populate known_hosts with the app server
+#
+# NOTE: this must run ON the Jenkins host. A `lookup('pipe', 'ssh-keyscan ...')`
+# would execute on the Ansible controller (your laptop), which cannot reach a
+# private VPC address at all.
+- name: Scan the app server's host key from the Jenkins host
+  ansible.builtin.command:
+    cmd: "ssh-keyscan -T 5 -t ed25519 {{ hostvars[item].private_ip_address }}"
+  loop: "{{ groups['role_app'] | default([]) }}"
+  register: app_host_keys
+  changed_when: false
+  failed_when: false
+
+- name: Add the app server to the jenkins user's known_hosts
   ansible.builtin.known_hosts:
     path: /var/lib/jenkins/.ssh/known_hosts
-    name: "{{ hostvars[item].private_ip_address }}"
-    key: "{{ lookup('pipe', 'ssh-keyscan -t ed25519 ' ~ hostvars[item].private_ip_address) }}"
+    name: "{{ hostvars[item.item].private_ip_address }}"
+    key: "{{ item.stdout }}"
     state: present
-  loop: "{{ groups['role_app'] | default([]) }}"
+  loop: "{{ app_host_keys.results | default([]) }}"
+  loop_control:
+    label: "{{ hostvars[item.item].private_ip_address | default('unknown') }}"
+  when: item.stdout is defined and item.stdout | length > 0
   become: true
   become_user: jenkins
-  failed_when: false
 
 - name: Wait for Jenkins to answer on 8080
   ansible.builtin.uri:

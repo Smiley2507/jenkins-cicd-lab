@@ -1,12 +1,24 @@
 ---
-# Pinned so a rebuild months from now installs what you tested against.
+# --- remote Python ---------------------------------------------------------
+# Amazon Linux 2023 ships Python 3.9 as /usr/bin/python3. Pinning it explicitly
+# stops Ansible's discovery from picking a different interpreter between runs,
+# which is the usual cause of "the Python version is unsupported" or of modules
+# failing because a library was installed under a different interpreter.
+#
+# If your ansible-core is new enough to reject 3.9 on the target, install a
+# newer one and point this at it instead:
+#   ansible -m raw -a "sudo dnf install -y python3.11" all
+#   ansible_python_interpreter: /usr/bin/python3.11
+ansible_python_interpreter: /usr/bin/python3
+
+# --- pinned versions -------------------------------------------------------
 docker_compose_version: "v2.32.4"
 nginx_version: "1.27-alpine"
 
 # Java for the Jenkins controller. Jenkins LTS requires 17 or 21.
 java_package: java-21-amazon-corretto
 
-# App server layout.
+# --- app server layout -----------------------------------------------------
 app_dir: /opt/weather-app
 app_port: 80          # host port nginx publishes
 container_port: 8000  # gunicorn's port inside the app container

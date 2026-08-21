@@ -1,7 +1,6 @@
 ---
 common_packages:
   - git
-  - curl
   - tar
   - unzip
   - jq

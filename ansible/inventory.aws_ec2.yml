@@ -1,32 +1,43 @@
 ---
 # Dynamic inventory: queries EC2 directly, so there is no static hosts file to
-# keep in sync with Terraform. Hosts are grouped by the Role tag that
-# compute.tf sets.
+# keep in sync with Terraform.
 plugin: amazon.aws.aws_ec2
 
 regions:
   - eu-west-1
 
-# Uses the same named profile as Terraform.
+# Same named profile Terraform uses.
 profile: sandbox-user
 
-# Only running instances from this project, so an unrelated instance in the
-# account can never end up being configured by accident.
+# Server-side API filters. Only running instances from this project, so an
+# unrelated instance in the account can never be configured by accident.
 filters:
   instance-state-name: running
   tag:Project: jenkins-cicd-lab
 
-# Connect over the public IP — we are running Ansible from a laptop outside
-# the VPC. Swap to private_ip_address if you ever run it from a bastion.
+# Name the hosts after their Name tag rather than a long DNS string.
 hostnames:
   - tag:Name
 
+# Connect over the public IP — Ansible runs from a laptop outside the VPC.
 compose:
   ansible_host: public_ip_address
 
+# Group by the Role tag that Terraform sets:
+#   Role=jenkins -> role_jenkins
+#   Role=app     -> role_app
+#
+# NOTE: the key is `ec2_tags`, NOT `tags`. The bare `tags` host variable is
+# deprecated in amazon.aws and is scheduled for removal after 2026-12-01.
 keyed_groups:
-  # tag Role=jenkins  ->  group "role_jenkins"
-  # tag Role=app      ->  group "role_app"
-  - key: tags.Role
+  - key: ec2_tags.Role
     prefix: role
     separator: "_"
+
+# Cache the EC2 API responses so repeated runs don't re-query AWS. These are
+# options of the inventory plugin, so they belong here rather than in the
+# [inventory] section of ansible.cfg.
+cache: true
+cache_plugin: jsonfile
+cache_connection: ./.ansible_inventory_cache
+cache_timeout: 300
