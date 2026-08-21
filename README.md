@@ -258,11 +258,8 @@ not a stale one left over from a previous deploy.
 ## How to reproduce
 
 Full step-by-step instructions, from IAM user through teardown, are in
-**[SETUP.md](SETUP.md)** — including a troubleshooting table for the failures
+**[runbook.md](runbook.md)** — including a troubleshooting table for the failures
 most likely to bite.
-
-For a plain-language walkthrough of what every file does and why, with the
-Jenkinsfile covered block by block, see **[EXPLAINER.md](EXPLAINER.md)**.
 
 ```
 app/                  Flask source, tests, requirements, Dockerfile

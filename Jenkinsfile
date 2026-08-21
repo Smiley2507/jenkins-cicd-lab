@@ -5,6 +5,10 @@
 pipeline {
     agent any
 
+    triggers {
+        githubPush()
+    }
+
     parameters {
         string(name: 'DOCKERHUB_USER', defaultValue: 'voidmaster', description: 'Your Docker Hub username (lowercase)')
         string(name: 'APP_HOST',       defaultValue: '10.20.1.14', description: 'terraform output -raw app_private_ip')
