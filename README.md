@@ -341,6 +341,3 @@ Worth recording, because each cost real debugging time:
 ```bash
 cd terraform && terraform destroy
 ```
-
-The pipeline prunes controller-side images after every build, and a daily cron
-prunes the app server.
