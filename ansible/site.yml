@@ -11,6 +11,7 @@
   become: true
   roles:
     - jenkins
+    - cloudwatch_agent
 
 - name: Configure the deployment target
   hosts: role_app

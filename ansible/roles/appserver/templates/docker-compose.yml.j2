@@ -21,10 +21,11 @@ services:
       retries: 3
       start_period: 10s
     logging:
-      driver: json-file
+      driver: awslogs
       options:
-        max-size: "10m"
-        max-file: "3"
+        awslogs-region: "{{ aws_region }}"
+        awslogs-group: "/weather-app/web"
+        awslogs-stream: "{{ inventory_hostname }}-web"
 
   nginx:
     image: nginx:{{ nginx_version }}
@@ -39,7 +40,8 @@ services:
       web:
         condition: service_healthy
     logging:
-      driver: json-file
+      driver: awslogs
       options:
-        max-size: "10m"
-        max-file: "3"
+        awslogs-region: "{{ aws_region }}"
+        awslogs-group: "/weather-app/nginx"
+        awslogs-stream: "{{ inventory_hostname }}-nginx"

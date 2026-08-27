@@ -1,0 +1,19 @@
+{
+  "agent": {
+    "run_as_user": "root"
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "{{ cw_agent_log_file }}",
+            "log_group_name": "{{ cw_agent_log_group }}",
+            "log_stream_name": "{{ inventory_hostname }}",
+            "timezone": "UTC"
+          }
+        ]
+      }
+    }
+  }
+}
