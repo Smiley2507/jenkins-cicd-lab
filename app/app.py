@@ -30,6 +30,7 @@ def _attach_metrics(app):
         # The multiprocess collector builds its own registry from the shared
         # directory, so it must not be given one.
         metrics = GunicornPrometheusMetrics(app)
+        metrics.register_endpoint("/metrics", app)
     else:
         from prometheus_client import CollectorRegistry
         from prometheus_flask_exporter import PrometheusMetrics
