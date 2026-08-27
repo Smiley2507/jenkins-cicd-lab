@@ -23,6 +23,21 @@ module "jenkins_sg" {
       to_port     = 8080
       ip_protocol = "tcp"
       cidr_ipv4   = var.admin_cidr
+    },
+    # --- observability: scraped by the monitoring server ---
+    {
+      description = "node_exporter, scraped by Prometheus"
+      from_port   = 9100
+      to_port     = 9100
+      ip_protocol = "tcp"
+      cidr_ipv4   = var.vpc_cidr
+    },
+    {
+      description = "Jenkins /prometheus endpoint, scraped by Prometheus"
+      from_port   = 8080
+      to_port     = 8080
+      ip_protocol = "tcp"
+      cidr_ipv4   = var.vpc_cidr
     }
   ]
 }
@@ -55,6 +70,30 @@ module "app_sg" {
       to_port     = var.app_port
       ip_protocol = "tcp"
       cidr_ipv4   = "0.0.0.0/0"
+    },
+    # --- observability: scraped by the monitoring server ---
+    # The app's own /metrics is reached through nginx on port 80 (already open
+    # above) and restricted in the nginx config, so it needs no rule here.
+    {
+      description = "node_exporter, scraped by Prometheus"
+      from_port   = 9100
+      to_port     = 9100
+      ip_protocol = "tcp"
+      cidr_ipv4   = var.vpc_cidr
+    },
+    {
+      description = "cAdvisor, scraped by Prometheus"
+      from_port   = 8080
+      to_port     = 8080
+      ip_protocol = "tcp"
+      cidr_ipv4   = var.vpc_cidr
+    },
+    {
+      description = "nginx-prometheus-exporter, scraped by Prometheus"
+      from_port   = 9113
+      to_port     = 9113
+      ip_protocol = "tcp"
+      cidr_ipv4   = var.vpc_cidr
     }
   ]
 }

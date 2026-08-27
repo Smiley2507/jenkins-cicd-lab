@@ -7,10 +7,6 @@ module "key_pair" {
   save_private_key_path = var.private_key_path
 }
 
-# No user_data on either instance. Package installation and configuration are
-# Ansible's job — see ../ansible. Terraform stops at "a reachable host with the
-# right tags", which is exactly what the dynamic inventory needs.
-
 module "jenkins_server" {
   source = "git::https://github.com/Smiley2507/terraform-aws-modules.git//modules/ec2-instance?ref=main"
 
@@ -23,9 +19,8 @@ module "jenkins_server" {
   root_volume_size            = var.jenkins_root_volume_size
   ami_name_filter             = var.ami_name_filter
   ami_owner                   = "amazon"
+  iam_instance_profile = aws_iam_instance_profile.ec2_observability.name
 
-  # Role drives the Ansible dynamic-inventory grouping. Changing this string
-  # means changing keyed_groups in inventory.aws_ec2.yml.
   tags = {
     Role = "jenkins"
   }
@@ -43,6 +38,8 @@ module "app_server" {
   root_volume_size            = var.app_root_volume_size
   ami_name_filter             = var.ami_name_filter
   ami_owner                   = "amazon"
+
+  iam_instance_profile = aws_iam_instance_profile.ec2_observability.name
 
   tags = {
     Role = "app"

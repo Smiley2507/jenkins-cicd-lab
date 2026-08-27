@@ -12,9 +12,46 @@ from weather import (
 APP_VERSION = os.environ.get("APP_VERSION", "dev")
 
 
+def _attach_metrics(app):
+    """Expose Prometheus metrics at /metrics.
+
+    Under gunicorn each worker is a separate process with its own registry, so
+    a scrape would hit one worker at random and report a fraction of the
+    traffic. The multiprocess collector has every worker write to a shared
+    directory instead, and aggregates on scrape.
+
+    PROMETHEUS_MULTIPROC_DIR is set in the Dockerfile. When it is absent — in
+    the test suite, or `python app.py` locally — the single-process collector is
+    used instead, which keeps the tests simple.
+    """
+    if os.environ.get("PROMETHEUS_MULTIPROC_DIR"):
+        from prometheus_flask_exporter.multiprocess import GunicornPrometheusMetrics
+
+        # The multiprocess collector builds its own registry from the shared
+        # directory, so it must not be given one.
+        metrics = GunicornPrometheusMetrics(app)
+    else:
+        from prometheus_client import CollectorRegistry
+        from prometheus_flask_exporter import PrometheusMetrics
+
+        # A registry per application instance rather than the global default.
+        # create_app() is called once per test, and re-registering the same
+        # metric names in one shared registry raises "Duplicated timeseries".
+        metrics = PrometheusMetrics(app, registry=CollectorRegistry())
+
+    # A constant-value metric carrying the build tag as a label, so Grafana can
+    # show which version produced a given series.
+    metrics.info("weather_app_info", "Application metadata", version=APP_VERSION)
+    return metrics
+
+
 def create_app():
     """Application factory — lets tests build an isolated instance."""
     app = Flask(__name__)
+
+    # Registers /metrics and instruments every request with a duration
+    # histogram and a counter labelled by status, method and path.
+    _attach_metrics(app)
 
     @app.get("/health")
     def health():

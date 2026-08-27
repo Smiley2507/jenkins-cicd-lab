@@ -1,11 +1,4 @@
 # syntax=docker/dockerfile:1
-#
-# Build context is THIS directory, not the repo root:
-#   docker build -t weather-app:local --build-arg APP_VERSION=local app/
-#
-# Keeping the Dockerfile beside the code it builds means terraform/ and
-# ansible/ are structurally outside the context — they can't leak into a build
-# even if .dockerignore is wrong.
 
 # --- build stage: resolve dependencies into a wheel cache -------------------
 FROM python:3.12-slim AS builder
@@ -23,10 +16,15 @@ FROM python:3.12-slim
 ARG APP_VERSION=dev
 ENV APP_VERSION=${APP_VERSION} \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
 
 # Run as a non-root user. Nothing in this image needs to write to disk.
 RUN useradd --create-home --shell /usr/sbin/nologin appuser
+
+# Shared directory for the Prometheus multiprocess collector. Every gunicorn
+# worker writes its samples here and they are aggregated on scrape.
+RUN mkdir -p /tmp/prometheus_multiproc && chown appuser:appuser /tmp/prometheus_multiproc
 
 WORKDIR /app
 
@@ -35,7 +33,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.txt \
     && rm -rf /wheels
 
-COPY app.py weather.py ./
+COPY app.py weather.py gunicorn.conf.py ./
 COPY templates ./templates
 
 USER appuser
@@ -46,5 +44,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status == 200 else 1)"
 
-# Two workers suits a t3.small. Access logs to stdout for the json-file driver.
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--access-logfile", "-", "app:app"]
+# Settings live in gunicorn.conf.py, which also carries the two hooks the
+# Prometheus multiprocess collector needs.
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "app:app"]
