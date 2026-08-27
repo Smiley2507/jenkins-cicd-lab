@@ -5,9 +5,9 @@
 pipeline {
     agent any
 
-    triggers {
-        githubPush()
-    }
+    // triggers {
+    //     githubPush()
+    // }
 
     parameters {
         string(name: 'DOCKERHUB_USER', defaultValue: 'voidmaster', description: 'Your Docker Hub username (lowercase)')
