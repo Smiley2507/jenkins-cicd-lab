@@ -1,6 +1,7 @@
 import os
 
 from flask import Flask, render_template, request
+from prometheus_flask_exporter import PrometheusMetrics
 
 from weather import (
     WeatherServiceError,
@@ -12,47 +13,38 @@ from weather import (
 APP_VERSION = os.environ.get("APP_VERSION", "dev")
 
 
-def _attach_metrics(app):
-    """Expose Prometheus metrics at /metrics.
+# def _attach_metrics(app):
+    
+#     if os.environ.get("PROMETHEUS_MULTIPROC_DIR"):
+#         from prometheus_flask_exporter.multiprocess import GunicornPrometheusMetrics
 
-    Under gunicorn each worker is a separate process with its own registry, so
-    a scrape would hit one worker at random and report a fraction of the
-    traffic. The multiprocess collector has every worker write to a shared
-    directory instead, and aggregates on scrape.
+#         # The multiprocess collector builds its own registry from the shared
+#         # directory, so it must not be given one.
+#         metrics = GunicornPrometheusMetrics(app)
+#         metrics.register_endpoint("/metrics", app)
+#     else:
+#         from prometheus_client import CollectorRegistry
+#         from prometheus_flask_exporter import PrometheusMetrics
 
-    PROMETHEUS_MULTIPROC_DIR is set in the Dockerfile. When it is absent — in
-    the test suite, or `python app.py` locally — the single-process collector is
-    used instead, which keeps the tests simple.
-    """
-    if os.environ.get("PROMETHEUS_MULTIPROC_DIR"):
-        from prometheus_flask_exporter.multiprocess import GunicornPrometheusMetrics
+#         # A registry per application instance rather than the global default.
+#         # create_app() is called once per test, and re-registering the same
+#         # metric names in one shared registry raises "Duplicated timeseries".
+#         metrics = PrometheusMetrics(app, registry=CollectorRegistry())
 
-        # The multiprocess collector builds its own registry from the shared
-        # directory, so it must not be given one.
-        metrics = GunicornPrometheusMetrics(app)
-        metrics.register_endpoint("/metrics", app)
-    else:
-        from prometheus_client import CollectorRegistry
-        from prometheus_flask_exporter import PrometheusMetrics
-
-        # A registry per application instance rather than the global default.
-        # create_app() is called once per test, and re-registering the same
-        # metric names in one shared registry raises "Duplicated timeseries".
-        metrics = PrometheusMetrics(app, registry=CollectorRegistry())
-
-    # A constant-value metric carrying the build tag as a label, so Grafana can
-    # show which version produced a given series.
-    metrics.info("weather_app_info", "Application metadata", version=APP_VERSION)
-    return metrics
+#     # A constant-value metric carrying the build tag as a label, so Grafana can
+#     # show which version produced a given series.
+#     metrics.info("weather_app_info", "Application metadata", version=APP_VERSION)
+#     return metrics
 
 
 def create_app():
     """Application factory — lets tests build an isolated instance."""
     app = Flask(__name__)
+    metrics = PrometheusMetrics(app, group_by='endpoint')
 
     # Registers /metrics and instruments every request with a duration
     # histogram and a counter labelled by status, method and path.
-    _attach_metrics(app)
+    # _attach_metrics(app)
 
     @app.get("/health")
     def health():
@@ -62,6 +54,7 @@ def create_app():
 
     @app.get("/")
     def index():
+        print(str(request.environ.get('werkzeug.request').response.status_code))
         return render_template("index.html", cities=known_cities(), result=None, error=None)
 
     @app.post("/")
@@ -97,9 +90,22 @@ def create_app():
                 502,
             )
 
-        return render_template("index.html", cities=known_cities(), result=result, error=None)
+        return render_template("index.html", cities=known_cities(), result=result, error=None)    
 
+    
+    metrics.register_default(
+            metrics.counter(
+                'weather_app_requests_total', 'Total number of requests', labels={'method': lambda: request.method,'path': lambda: request.path, 'status_code': lambda r: r.status_code}
+            )
+            metrics.histogram(
+                'weather_app_request_duration_seconds', 'Request duration in seconds', labels={'method': lambda: request.method,'path': lambda: request.path}
+            )
+            metrics.gauge(
+                'weather_app_inprogress_requests', 'Number of in-progress requests', labels={'method': lambda: request.method,'path': lambda: request.path}
+            )
+    )
     return app
+
 
 
 app = create_app()
