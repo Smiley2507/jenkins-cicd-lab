@@ -1,6 +1,7 @@
 import os
 
 from flask import Flask, render_template, request
+from prometheus_client import CollectorRegistry
 from prometheus_flask_exporter import PrometheusMetrics
 
 from weather import (
@@ -40,7 +41,9 @@ APP_VERSION = os.environ.get("APP_VERSION", "dev")
 def create_app():
     """Application factory — lets tests build an isolated instance."""
     app = Flask(__name__)
-    metrics = PrometheusMetrics(app, group_by='endpoint')
+    # create_app() is called once per test, and re-registering the same metric
+    # names in one shared default registry raises "Duplicated timeseries".
+    metrics = PrometheusMetrics(app, group_by='endpoint', registry=CollectorRegistry())
 
     # Registers /metrics and instruments every request with a duration
     # histogram and a counter labelled by status, method and path.
@@ -54,9 +57,8 @@ def create_app():
 
     @app.get("/")
     def index():
-        print(str(request.environ.get('werkzeug.request').response.status_code))
         return render_template("index.html", cities=known_cities(), result=None, error=None)
-
+    
     @app.post("/")
     def lookup():
         slug = (request.form.get("city") or "").strip().lower()
