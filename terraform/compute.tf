@@ -19,6 +19,7 @@ module "jenkins_server" {
   root_volume_size            = var.jenkins_root_volume_size
   ami_name_filter             = var.ami_name_filter
   ami_owner                   = "amazon"
+  ami_id = var.ami_id
   iam_instance_profile = aws_iam_instance_profile.ec2_observability.name
 
   tags = {
@@ -38,7 +39,7 @@ module "app_server" {
   root_volume_size            = var.app_root_volume_size
   ami_name_filter             = var.ami_name_filter
   ami_owner                   = "amazon"
-
+  ami_id = var.ami_id
   iam_instance_profile = aws_iam_instance_profile.ec2_observability.name
 
   tags = {

@@ -60,6 +60,11 @@ variable "ami_name_filter" {
   default     = "al2023-ami-2023.*-kernel-6.1-x86_64"
 }
 
+variable "ami_id" {
+  description = "Pinned AMI. Resolving the latest AL2023 at plan time makes every plan want to replace the instances whenever AWS publishes a new image."
+  type        = string
+  default     = "ami-0b9b7988c01535dd6"
+}
 # --- access ----------------------------------------------------------------
 
 variable "admin_cidr" {
