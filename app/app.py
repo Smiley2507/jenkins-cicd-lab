@@ -14,40 +14,13 @@ from weather import (
 APP_VERSION = os.environ.get("APP_VERSION", "dev")
 
 
-# def _attach_metrics(app):
-    
-#     if os.environ.get("PROMETHEUS_MULTIPROC_DIR"):
-#         from prometheus_flask_exporter.multiprocess import GunicornPrometheusMetrics
-
-#         # The multiprocess collector builds its own registry from the shared
-#         # directory, so it must not be given one.
-#         metrics = GunicornPrometheusMetrics(app)
-#         metrics.register_endpoint("/metrics", app)
-#     else:
-#         from prometheus_client import CollectorRegistry
-#         from prometheus_flask_exporter import PrometheusMetrics
-
-#         # A registry per application instance rather than the global default.
-#         # create_app() is called once per test, and re-registering the same
-#         # metric names in one shared registry raises "Duplicated timeseries".
-#         metrics = PrometheusMetrics(app, registry=CollectorRegistry())
-
-#     # A constant-value metric carrying the build tag as a label, so Grafana can
-#     # show which version produced a given series.
-#     metrics.info("weather_app_info", "Application metadata", version=APP_VERSION)
-#     return metrics
-
-
 def create_app():
     """Application factory — lets tests build an isolated instance."""
     app = Flask(__name__)
-    # create_app() is called once per test, and re-registering the same metric
-    # names in one shared default registry raises "Duplicated timeseries".
+    # A fresh registry per app instance: create_app() runs once per test, and
+    # re-registering the same metric names on the shared default registry
+    # raises "Duplicated timeseries".
     metrics = PrometheusMetrics(app, group_by='endpoint', registry=CollectorRegistry())
-
-    # Registers /metrics and instruments every request with a duration
-    # histogram and a counter labelled by status, method and path.
-    # _attach_metrics(app)
 
     @app.get("/health")
     def health():
@@ -92,22 +65,31 @@ def create_app():
                 502,
             )
 
-        return render_template("index.html", cities=known_cities(), result=result, error=None)    
+        return render_template("index.html", cities=known_cities(), result=result, error=None)
 
-    
+    @app.get("/boom")
+    def boom():
+        """Always raises, so 500 handling and error alerting can be tested."""
+        raise RuntimeError("boom: intentional failure for testing error paths")
+
+    # Request counter, duration histogram and in-progress gauge, each labelled
+    # by method and path (the counter also carries the response status code).
+    request_labels = {"method": lambda: request.method, "path": lambda: request.path}
     metrics.register_default(
-            metrics.counter(
-                'weather_app_requests_total', 'Total number of requests', labels={'method': lambda: request.method,'path': lambda: request.path, 'status_code': lambda r: r.status_code}
-            ),
-            metrics.histogram(
-                'weather_app_request_duration_seconds', 'Request duration in seconds', labels={'method': lambda: request.method,'path': lambda: request.path}
-            ),
-            metrics.gauge(
-                'weather_app_inprogress_requests', 'Number of in-progress requests', labels={'method': lambda: request.method,'path': lambda: request.path}
-            )
+        metrics.counter(
+            "weather_app_requests_total", "Total number of requests",
+            labels={**request_labels, "status_code": lambda r: r.status_code},
+        ),
+        metrics.histogram(
+            "weather_app_request_duration_seconds", "Request duration in seconds",
+            labels=request_labels,
+        ),
+        metrics.gauge(
+            "weather_app_inprogress_requests", "Number of in-progress requests",
+            labels=request_labels,
+        ),
     )
     return app
-
 
 
 app = create_app()
