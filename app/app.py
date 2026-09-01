@@ -96,10 +96,10 @@ def create_app():
     metrics.register_default(
             metrics.counter(
                 'weather_app_requests_total', 'Total number of requests', labels={'method': lambda: request.method,'path': lambda: request.path, 'status_code': lambda r: r.status_code}
-            )
+            ),
             metrics.histogram(
                 'weather_app_request_duration_seconds', 'Request duration in seconds', labels={'method': lambda: request.method,'path': lambda: request.path}
-            )
+            ),
             metrics.gauge(
                 'weather_app_inprogress_requests', 'Number of in-progress requests', labels={'method': lambda: request.method,'path': lambda: request.path}
             )
