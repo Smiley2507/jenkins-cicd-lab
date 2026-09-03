@@ -1,8 +1,13 @@
 import os
+import time
 
-from flask import Flask, render_template, request
+from flask import Flask, abort, render_template, request
 from prometheus_client import CollectorRegistry
 from prometheus_flask_exporter import PrometheusMetrics
+from logging_config import configure_logging
+from tracing import init_tracing
+
+logger = configure_logging()
 
 from weather import (
     WeatherServiceError,
@@ -17,6 +22,7 @@ APP_VERSION = os.environ.get("APP_VERSION", "dev")
 def create_app():
     """Application factory — lets tests build an isolated instance."""
     app = Flask(__name__)
+    init_tracing(app, version=APP_VERSION)
     # A fresh registry per app instance: create_app() runs once per test, and
     # re-registering the same metric names on the shared default registry
     # raises "Duplicated timeseries".
@@ -31,7 +37,7 @@ def create_app():
     @app.get("/")
     def index():
         return render_template("index.html", cities=known_cities(), result=None, error=None)
-    
+
     @app.post("/")
     def lookup():
         slug = (request.form.get("city") or "").strip().lower()
@@ -67,13 +73,36 @@ def create_app():
 
         return render_template("index.html", cities=known_cities(), result=result, error=None)
 
-    @app.get("/boom")
-    def boom():
-        """Always raises, so 500 handling and error alerting can be tested."""
-        raise RuntimeError("boom: intentional failure for testing error paths")
+    @app.after_request
+    def log_request(response):
+        # One JSON log line per request, carrying the trace ID -- the join
+        # key between a Jaeger trace and its CloudWatch log lines.
+        logger.info(
+            "request",
+            extra={
+                "method": request.method,
+                "path": request.path,
+                "status": response.status_code,
+            },
+        )
+        return response
 
-    # Request counter, duration histogram and in-progress gauge, each labelled
-    # by method and path (the counter also carries the response status code).
+    if os.environ.get("ENABLE_TEST_ROUTES", "").lower() in ("1", "true", "yes"):
+
+        @app.route("/slow")
+        def slow():
+            # Past the 300ms alert threshold; sleeping in the handler makes it
+            # show up as server-span time, like a real slow endpoint.
+            time.sleep(0.8)
+            logger.warning("slow endpoint hit", extra={"delay_seconds": 0.8})
+            return {"status": "slow"}, 200
+
+        @app.route("/boom")
+        def boom():
+            logger.error("deliberate failure for alert testing")
+            abort(500)
+
+    # Counter, duration histogram and in-progress gauge, labelled by method/path.
     request_labels = {"method": lambda: request.method, "path": lambda: request.path}
     metrics.register_default(
         metrics.counter(
