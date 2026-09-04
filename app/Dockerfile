@@ -33,7 +33,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --no-index --find-links=/wheels -r requirements.txt \
     && rm -rf /wheels
 
-COPY app.py weather.py gunicorn.conf.py logging_config.py ./
+COPY app.py weather.py gunicorn.conf.py tracing.py logging_config.py ./
 COPY templates ./templates
 
 USER appuser
