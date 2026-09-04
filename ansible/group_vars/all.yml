@@ -36,4 +36,4 @@ aws_region: eu-west-1
 # now rather than looked up from the dynamic inventory -- fine for tonight,
 # but should become a lookup once the monitoring host's IP is discoverable
 # the way the monitoring repo does it.
-monitoring_private_ip: "CHANGEME"
+monitoring_private_ip: "10.20.1.181"
